@@ -5,6 +5,7 @@ from PySide2.QtGui import *
 from PySide2.QtWebEngineWidgets import *
 
 from engine import Engine
+from theme import palette
 
 
 class DictWindow(QMainWindow):
@@ -103,6 +104,10 @@ class MainWindow(QMainWindow):
 
 
 app = QApplication(sys.argv)
+# Force the style to be the same on all OSs
+app.setStyle("Fusion")
+# Apply dark theme using palette
+app.setPalette(palette)
 win = MainWindow()
 win.show()
 app.exec_()
