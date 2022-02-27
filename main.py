@@ -46,8 +46,9 @@ class DictWindow(QMainWindow):
         painter.fillPath(path, QBrush(Qt.black))
         painter.end()
         self.setMask(bitmap)
-
-
+    
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        self.web_view.setHtml("")
         
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
