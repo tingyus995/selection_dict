@@ -10,18 +10,17 @@ from theme import palette
 
 class DictWindow(QMainWindow):
 
-    def __init__(self, url: str, x: int, y: int) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowFlag(Qt.Popup)
 
-        self.set_location(x, y)
+        self.set_location(0, 0)
 
         self.main_layout = QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.web_view = QWebEngineView()
         self.main_layout.addWidget(self.web_view)
-        self.set_url(url)
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
@@ -30,6 +29,12 @@ class DictWindow(QMainWindow):
         self.border_pen = QPen()
         self.border_pen.setWidth(3)
         self.border_pen.setColor(Qt.red)
+
+        with open("loading.html", 'r', encoding='utf-8') as f:
+            self.loading_html = f.read()
+
+        self.web_view.setHtml(self.loading_html)
+
         self._rounded_corners()
 
     def set_url(self, url: str):
@@ -51,7 +56,7 @@ class DictWindow(QMainWindow):
         self.setMask(bitmap)
 
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.web_view.setHtml("")
+        self.web_view.setHtml(self.loading_html)
 
 
 class ListeningStatusIndicator(QLabel):
@@ -95,7 +100,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.is_listening = False
-        self.dict_win = None
+        self.dict_win = DictWindow()
 
         self.engine = Engine()
         self.engine.signals.selected.connect(self._show_dict)
@@ -126,13 +131,9 @@ class MainWindow(QMainWindow):
 
     def _show_dict(self, url, x, y):
         print(url)
-        if self.dict_win is None:
-            self.dict_win = DictWindow(url, x, y)
-            self.dict_win.show()
-        else:
-            self.dict_win.set_location(x, y)
-            self.dict_win.set_url(url)
-            self.dict_win.show()
+        self.dict_win.set_location(x, y)
+        self.dict_win.set_url(url)
+        self.dict_win.show()
 
     def _handle_start_btn(self):
         if self.is_listening:
