@@ -54,6 +54,42 @@ class DictWindow(QMainWindow):
         self.web_view.setHtml("")
 
 
+class ListeningStatusIndicator(QLabel):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        size = 10
+        self.green_dot = self._create_dot(QColor.fromRgb(94, 235, 52), size)
+        self.red_dot = self._create_dot(QColor.fromRgb(235, 92, 52), size)
+
+    def _create_dot(self, color: QColor, size: int):
+        brush = QBrush()
+        brush.setColor(color)
+        brush.setStyle(Qt.SolidPattern)
+
+        image = QImage(size, size, QImage.Format_RGBA8888)
+        image.fill(0)
+
+        pixmap = QPixmap.fromImage(image)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(brush)
+
+        path = QPainterPath()
+        path.addEllipse(0, 0, size, size)
+        painter.fillPath(path, brush)
+        painter.end()
+
+        return pixmap
+
+    def show_green_dot(self):
+        self.setPixmap(self.green_dot)
+
+    def show_red_dot(self):
+        self.setPixmap(self.red_dot)
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -72,8 +108,14 @@ class MainWindow(QMainWindow):
 
         self.vocab_list_table = QTableView()
         self.vocab_list_table.setModel(self.engine.word_history_model)
-
         self.main_layout.addWidget(self.vocab_list_table)
+
+        self.listening_status_indicator = ListeningStatusIndicator()
+        self.listening_status_indicator.show_red_dot()
+        self.statusBar().addWidget(self.listening_status_indicator)
+
+        self.listeining_status_text = QLabel("not listening")
+        self.statusBar().addWidget(self.listeining_status_text)
 
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
@@ -95,9 +137,13 @@ class MainWindow(QMainWindow):
     def _handle_start_btn(self):
         if self.is_listening:
             self.engine.stop_listening()
+            self.listening_status_indicator.show_red_dot()
+            self.listeining_status_text.setText("not listening")
             self.listen_btn.setText("Start Listening")
         else:
             self.engine.start_listening()
+            self.listening_status_indicator.show_green_dot()
+            self.listeining_status_text.setText("listening")
             self.listen_btn.setText("Stop Listening")
 
         self.is_listening = not self.is_listening
