@@ -1,10 +1,11 @@
-from turtle import width
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtWebEngineWidgets import *
+import sys
+from PySide2.QtCore import *
+from PySide2.QtWidgets import *
+from PySide2.QtGui import *
+from PySide2.QtWebEngineWidgets import *
 
 from engine import Engine
+
 
 class DictWindow(QMainWindow):
 
@@ -29,7 +30,7 @@ class DictWindow(QMainWindow):
         self.border_pen.setWidth(3)
         self.border_pen.setColor(Qt.red)
         self._rounded_corners()
-    
+
     def set_url(self, url: str):
         self.web_view.load(QUrl(url))
 
@@ -39,17 +40,19 @@ class DictWindow(QMainWindow):
     def _rounded_corners(self):
         bitmap = QBitmap(self.width(), self.height())
         path = QPainterPath()
-        path.addRoundedRect(0, 0, self.width(), self.height(), self.radius, self.radius) 
+        path.addRoundedRect(0, 0, self.width(),
+                            self.height(), self.radius, self.radius)
 
         painter = QPainter(bitmap)
         painter.setRenderHints(QPainter.Antialiasing)
         painter.fillPath(path, QBrush(Qt.black))
         painter.end()
         self.setMask(bitmap)
-    
+
     def closeEvent(self, a0: QCloseEvent) -> None:
         self.web_view.setHtml("")
-        
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -66,12 +69,17 @@ class MainWindow(QMainWindow):
         self.listen_btn.clicked.connect(self._handle_start_btn)
         self.main_layout.addWidget(self.listen_btn)
 
+        self.vocab_list_table = QTableView()
+        self.vocab_list_table.setModel(self.engine.word_history_model)
+
+        self.main_layout.addWidget(self.vocab_list_table)
+
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
 
-    
-    
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.engine.save_history()
 
     def _show_dict(self, url, x, y):
         print(url)
@@ -90,11 +98,11 @@ class MainWindow(QMainWindow):
         else:
             self.engine.start_listening()
             self.listen_btn.setText("Stop Listening")
-        
+
         self.is_listening = not self.is_listening
 
 
-app = QApplication([])
+app = QApplication(sys.argv)
 win = MainWindow()
 win.show()
-app.exec()
+app.exec_()
