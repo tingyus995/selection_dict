@@ -17,7 +17,7 @@ class WordHistory(QAbstractTableModel):
         self.beginResetModel()
         with open(path, 'r', encoding='utf-8') as f:
             for k, v in csv.reader(f):
-                self.history_data[k] = v
+                self.history_data[k] = int(v)
         self.endResetModel()
 
     def save_data(self, path):
