@@ -241,6 +241,12 @@ QHeaderView::section:checked {
         idx = int(int(opacity * 100) / 5)
         self.opacity_action_group.actions()[idx - 1].setChecked(True)
 
+        # restore always on top
+        if self.config["always_on_top"]:
+            self._enable_always_on_top()
+            self.always_on_top_action.setChecked(True)
+        
+
     def _save_config(self):
 
         with open("config.json", 'w', encoding='utf-8') as f:
@@ -264,8 +270,14 @@ QHeaderView::section:checked {
         self.engine.word_history_model.reset_count(row)
 
     def _create_menu(self):
-
+        
         self.options_menu = self.menuBar().addMenu("&Options")
+
+        self.always_on_top_action = QAction("Always On Top")
+        self.always_on_top_action.setCheckable(True)
+        self.always_on_top_action.triggered.connect(self._handle_always_on_top_action)
+        self.options_menu.addAction(self.always_on_top_action)
+
         self.dict_opacity_menu = self.options_menu.addMenu(
             "&Dictionary Opacity")
 
@@ -298,6 +310,22 @@ QHeaderView::section:checked {
     def closeEvent(self, event: QCloseEvent) -> None:
         self.engine.save_history()
         self._save_config()
+    
+    def _handle_always_on_top_action(self, checked: bool):
+        if checked:
+            self._enable_always_on_top()
+        else:
+            self._disble_always_on_top()
+    
+    def _enable_always_on_top(self):
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.config["always_on_top"] = True
+        self.show()
+
+    def _disble_always_on_top(self):
+        self.setWindowFlags(self.windowFlags() & (~Qt.WindowStaysOnTopHint))
+        self.config["always_on_top"] = False
+        self.show()
 
     def _show_dict(self, url, x, y):
         print(url)
