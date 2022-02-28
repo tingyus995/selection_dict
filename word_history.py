@@ -2,6 +2,7 @@ from typing import *
 import csv
 
 from PySide2.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide2.QtGui import QColor
 
 
 class WordHistory(QAbstractTableModel):
@@ -56,12 +57,30 @@ class WordHistory(QAbstractTableModel):
         row = index.row()
         col = index.column()
 
-        if(role == Qt.DisplayRole):
+        if role == Qt.DisplayRole:
 
             if col == 0:
                 return list(self.history_data.keys())[row]
             elif col == 1:
                 return self.history_data[list(self.history_data.keys())[row]]
+
+        elif role == Qt.BackgroundRole:
+
+            val = self.history_data[list(self.history_data.keys())[row]]
+
+            a = 100
+
+            if val >= 5:
+                return QColor.fromRgb(235, 64, 52, a)
+            elif val == 4:
+                return QColor.fromRgb(235, 147, 52, a)
+            elif val == 3:
+                return QColor.fromRgb(235, 223, 52, a)
+            elif val == 2:
+                return QColor.fromRgb(159, 235, 52, a)
+            elif val == 1:
+                return QColor.fromRgb(83, 235, 52, a)
+
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:

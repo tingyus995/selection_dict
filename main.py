@@ -112,7 +112,25 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.listen_btn)
 
         self.vocab_list_table = QTableView()
+        self.vocab_list_table.setStyleSheet("""
+QTableView::item:selected{
+    background-color: rgb(149, 187, 232);
+}
+        """)
         self.vocab_list_table.setModel(self.engine.word_history_model)
+        self.vocab_list_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.vocab_list_table.verticalHeader().setStyleSheet("""
+QHeaderView::section {
+    border: 0;
+    border-left: 3px solid rgba(0, 0, 0, 0);
+    padding-left: 3px;
+}
+QHeaderView::section:checked {
+    border: 0;
+    border-left: 3px solid rgb(149, 187, 232);
+}
+
+        """)
         self.main_layout.addWidget(self.vocab_list_table)
 
         self.listening_status_indicator = ListeningStatusIndicator()
