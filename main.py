@@ -1,5 +1,9 @@
 from typing import *
+import shutil
+import os
 import sys
+import json
+
 from PySide2.QtCore import *
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
@@ -213,13 +217,65 @@ QHeaderView::section:checked {
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
 
+        self._create_menu()
+        self._load_config()
+
+    def _load_config(self):
+        if not os.path.exists("config.json"):
+            shutil.copy("config.default.json", "config.json")
+        
+        with open("config.json", 'r', encoding='utf-8') as f:
+            self.config = json.load(f)
+        
+        # restore opacity
+        opacity = self.config["dict_opacity"]
+        idx = int(int(opacity * 100) / 5)
+        self.opacity_action_group.actions()[idx - 1].setChecked(True)
+    
+    def _save_config(self):
+
+        with open("config.json", 'w', encoding='utf-8') as f:
+            json.dump(self.config, f)
+    
+    def _set_opacity(self, opacity: float):
+        print(f"set opacity {opacity}")
+        self.config["dict_opacity"] = opacity
+    
+    def _get_opacity(self):
+        return self.config["dict_opacity"]
+    
+    def _create_menu(self):
+
+        self.options_menu = self.menuBar().addMenu("&Options")
+        self.dict_opacity_menu = self.options_menu.addMenu("&Dictionary Opacity")
+
+        self.opacity_action_group = QActionGroup(self)
+
+        for i in range(5, 101, 5):
+            action = QAction(f"{i}%", self)
+            action.setCheckable(True)
+
+            def closure():
+                
+                opacity = i / 100
+
+                return lambda: self._set_opacity(opacity)
+                
+            action.triggered.connect(closure())
+            self.opacity_action_group.addAction(action)
+        
+        self.dict_opacity_menu.addActions(self.opacity_action_group.actions())
+        
+
     def closeEvent(self, event: QCloseEvent) -> None:
         self.engine.save_history()
+        self._save_config()
 
     def _show_dict(self, url, x, y):
         print(url)
         self.dict_win.set_location(x, y)
         self.dict_win.set_url(url)
+        self.dict_win.setWindowOpacity(self._get_opacity())
         self.dict_win.show()
 
     def _handle_start_btn(self):
