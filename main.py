@@ -8,12 +8,12 @@ from PySide2.QtCore import *
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
 
+import pyperclip
+
 from engine import Engine
 from theme import palette
 from word_history import WordHistory
 from dict_window import DictWindow
-
-
 
 
 class ListeningStatusIndicator(QLabel):
@@ -58,7 +58,7 @@ class TableItemDelegateSignals(QObject):
 
 class TableItemDelegate(QStyledItemDelegate):
 
-    def __init__(self, engine: Engine) -> None:
+    def __init__(self, engine: Engine, menu: QMenu) -> None:
         super().__init__()
 
         self.signals = TableItemDelegateSignals()
@@ -81,23 +81,28 @@ class TableItemDelegate(QStyledItemDelegate):
             "selected": QColor.fromRgb(50, 50, 50)
         }
 
-    def editorEvent(self, event: QEvent, model: QAbstractItemModel, option: QStyleOptionViewItem, index: QModelIndex) -> bool:
+        self._menu = menu
 
+    def editorEvent(self, event: QEvent, model: QAbstractItemModel, option: QStyleOptionViewItem, index: QModelIndex) -> bool:
         if event.type() == QEvent.MouseButtonRelease:
 
             mouse_event: QMouseEvent = event
 
-            model: WordHistory = index.model()
-            word: str = model.data(model.createIndex(
-                index.row(), 0), Qt.DisplayRole)
+            if mouse_event.button() == Qt.LeftButton:
 
-            if index.column() == 2:
+                model: WordHistory = index.model()
+                word: str = model.data(model.createIndex(
+                    index.row(), 0), Qt.DisplayRole)
 
-                self.signals.selected.emit(self._engine.resolve_url(
-                    word), mouse_event.globalX(), mouse_event.globalY())
+                if index.column() == 2:
 
-            elif index.column() == 3:
-                model.remove_word(word)
+                    self.signals.selected.emit(self._engine.resolve_url(
+                        word), mouse_event.globalX(), mouse_event.globalY())
+
+                elif index.column() == 3:
+                    model.remove_word(word)
+            elif mouse_event.button() == Qt.RightButton:
+                self._menu.exec_(mouse_event.globalPos())
 
         return super().editorEvent(event, model, option, index)
 
@@ -174,6 +179,8 @@ QTableView::item:selected{
 }
         """)
         self.vocab_list_table.setModel(self.engine.word_history_model)
+        self.vocab_list_table.setSelectionMode(
+            QAbstractItemView.SingleSelection)
         self.vocab_list_table.setSelectionBehavior(
             QAbstractItemView.SelectRows)
         self.vocab_list_table.verticalHeader().setStyleSheet("""
@@ -189,8 +196,11 @@ QHeaderView::section:checked {
 
         """)
 
+        self._create_menu()
+
         self.vocab_list_table.viewport().setMouseTracking(True)
-        self.vocab_list_table_delegate = TableItemDelegate(self.engine)
+        self.vocab_list_table_delegate = TableItemDelegate(
+            self.engine, self.word_menu)
         self.vocab_list_table_delegate.signals.selected.connect(
             self._show_dict)
         self.vocab_list_table.setItemDelegate(self.vocab_list_table_delegate)
@@ -217,37 +227,47 @@ QHeaderView::section:checked {
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
 
-        self._create_menu()
         self._load_config()
 
     def _load_config(self):
         if not os.path.exists("config.json"):
             shutil.copy("config.default.json", "config.json")
-        
+
         with open("config.json", 'r', encoding='utf-8') as f:
             self.config = json.load(f)
-        
+
         # restore opacity
         opacity = self.config["dict_opacity"]
         idx = int(int(opacity * 100) / 5)
         self.opacity_action_group.actions()[idx - 1].setChecked(True)
-    
+
     def _save_config(self):
 
         with open("config.json", 'w', encoding='utf-8') as f:
             json.dump(self.config, f)
-    
+
     def _set_opacity(self, opacity: float):
         print(f"set opacity {opacity}")
         self.config["dict_opacity"] = opacity
-    
+
     def _get_opacity(self):
         return self.config["dict_opacity"]
-    
+
+    def _copy_selected_word(self):
+        row = self.vocab_list_table.selectionModel().selectedIndexes()[0].row()
+        word = self.engine.word_history_model.data(
+            self.engine.word_history_model.createIndex(row, 0), Qt.DisplayRole)
+        pyperclip.copy(word)
+
+    def _reset_selected_word_count(self):
+        row = self.vocab_list_table.selectionModel().selectedIndexes()[0].row()
+        self.engine.word_history_model.reset_count(row)
+
     def _create_menu(self):
 
         self.options_menu = self.menuBar().addMenu("&Options")
-        self.dict_opacity_menu = self.options_menu.addMenu("&Dictionary Opacity")
+        self.dict_opacity_menu = self.options_menu.addMenu(
+            "&Dictionary Opacity")
 
         self.opacity_action_group = QActionGroup(self)
 
@@ -256,16 +276,24 @@ QHeaderView::section:checked {
             action.setCheckable(True)
 
             def closure():
-                
+
                 opacity = i / 100
 
                 return lambda: self._set_opacity(opacity)
-                
+
             action.triggered.connect(closure())
             self.opacity_action_group.addAction(action)
-        
+
         self.dict_opacity_menu.addActions(self.opacity_action_group.actions())
-        
+
+        self.word_menu = QMenu()
+        self.copy_word_action = QAction("Copy Word")
+        self.copy_word_action.triggered.connect(self._copy_selected_word)
+        self.word_menu.addAction(self.copy_word_action)
+        self.reset_count_action = QAction("Reset Count")
+        self.reset_count_action.triggered.connect(
+            self._reset_selected_word_count)
+        self.word_menu.addAction(self.reset_count_action)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.engine.save_history()
