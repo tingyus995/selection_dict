@@ -31,7 +31,7 @@ class WordHistory(QAbstractTableModel):
             row = list(self.history_data.keys()).index(word)
             idx = self.createIndex(row, 1)
             self.history_data[word] += 1
-            self.dataChanged.emit(idx, idx, [])
+            self.dataChanged.emit(self.createIndex(row, 0), self.createIndex(row, 3), [])
 
         except ValueError:
             self.beginInsertRows(QModelIndex(), len(
