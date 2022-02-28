@@ -1,3 +1,4 @@
+from typing import *
 import sys
 from PySide2.QtCore import *
 from PySide2.QtWidgets import *
@@ -6,6 +7,7 @@ from PySide2.QtWebEngineWidgets import *
 
 from engine import Engine
 from theme import palette
+from word_history import WordHistory
 
 
 class DictWindow(QMainWindow):
@@ -95,6 +97,104 @@ class ListeningStatusIndicator(QLabel):
         self.setPixmap(self.red_dot)
 
 
+class TableItemDelegateSignals(QObject):
+    selected = Signal(str, int, int)
+
+
+class TableItemDelegate(QStyledItemDelegate):
+
+    def __init__(self, engine: Engine) -> None:
+        super().__init__()
+
+        self.signals = TableItemDelegateSignals()
+
+        self._engine = engine
+
+        self._icon_cache: Dict[str, QPixmap] = {}
+        self._hover_icon_cache: Dict[str, QPixmap] = {}
+        self._selected_icon_cache: Dict[str, QPixmap] = {}
+
+        self.state_to_cache = {
+            "normal": self._icon_cache,
+            "hover": self._hover_icon_cache,
+            "selected": self._selected_icon_cache
+        }
+
+        self.state_to_color = {
+            "normal": QColor.fromRgb(200, 200, 200),
+            "hover": QColor.fromRgb(255, 255, 255),
+            "selected": QColor.fromRgb(50, 50, 50)
+        }
+
+    def editorEvent(self, event: QEvent, model: QAbstractItemModel, option: QStyleOptionViewItem, index: QModelIndex) -> bool:
+
+        if event.type() == QEvent.MouseButtonRelease:
+
+            mouse_event: QMouseEvent = event
+
+            model: WordHistory = index.model()
+            word: str = model.data(model.createIndex(
+                index.row(), 0), Qt.DisplayRole)
+
+            if index.column() == 2:
+
+                self.signals.selected.emit(self._engine.resolve_url(
+                    word), mouse_event.globalX(), mouse_event.globalY())
+
+            elif index.column() == 3:
+                model.remove_word(word)
+
+        return super().editorEvent(event, model, option, index)
+
+    def _get_icon(self, icon_path: str, flag: QStyle.StateFlag):
+
+        # determine state
+        state = "normal"
+        if flag & QStyle.State_MouseOver > 0:
+            state = "hover"
+        elif flag & QStyle.State_Selected > 0:
+            state = "selected"
+
+        cache = self.state_to_cache[state]
+
+        if icon_path in cache:
+            return cache[icon_path]
+
+        # cache miss
+
+        # read the image file specified by the model
+        pixmap = QPixmap(icon_path)
+
+        # fill icon with desired color
+        mask = pixmap.createMaskFromColor(QColor('black'), Qt.MaskOutColor)
+
+        pixmap.fill(self.state_to_color[state])
+        pixmap.setMask(mask)
+        cache[icon_path] = pixmap
+
+        return pixmap
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        # return super().paint(painter, option, index)
+        if index.column() >= 2:
+            # paint QIcon here using data provided by the model
+            icon_path = index.data()
+            icon = QIcon(self._get_icon(icon_path, option.state))
+
+            opt = QStyleOptionViewItem(option)
+            self.initStyleOption(opt, index)
+
+            icon_size = 20
+            opt.icon = icon
+            opt.decorationSize = QSize(icon_size, icon_size)
+            opt.features = QStyleOptionViewItem.HasDecoration
+            opt.text = ""
+
+            opt.widget.style().drawControl(QStyle.CE_ItemViewItem, opt, painter, opt.widget)
+        else:
+            return super().paint(painter, option, index)
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -111,6 +211,7 @@ class MainWindow(QMainWindow):
         self.listen_btn.clicked.connect(self._handle_start_btn)
         self.main_layout.addWidget(self.listen_btn)
 
+        # Vocab list table
         self.vocab_list_table = QTableView()
         self.vocab_list_table.setStyleSheet("""
 QTableView::item:selected{
@@ -118,7 +219,8 @@ QTableView::item:selected{
 }
         """)
         self.vocab_list_table.setModel(self.engine.word_history_model)
-        self.vocab_list_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.vocab_list_table.setSelectionBehavior(
+            QAbstractItemView.SelectRows)
         self.vocab_list_table.verticalHeader().setStyleSheet("""
 QHeaderView::section {
     border: 0;
@@ -131,6 +233,22 @@ QHeaderView::section:checked {
 }
 
         """)
+
+        self.vocab_list_table.viewport().setMouseTracking(True)
+        self.vocab_list_table_delegate = TableItemDelegate(self.engine)
+        self.vocab_list_table_delegate.signals.selected.connect(
+            self._show_dict)
+        self.vocab_list_table.setItemDelegate(self.vocab_list_table_delegate)
+
+        self.vocab_list_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.vocab_list_table.horizontalHeader().setSectionResizeMode(1,
+                                                                      QHeaderView.ResizeToContents)
+        self.vocab_list_table.horizontalHeader().setSectionResizeMode(2,
+                                                                      QHeaderView.ResizeToContents)
+        self.vocab_list_table.horizontalHeader().setSectionResizeMode(3,
+                                                                      QHeaderView.ResizeToContents)
+
+        self.vocab_list_table.horizontalHeader()
         self.main_layout.addWidget(self.vocab_list_table)
 
         self.listening_status_indicator = ListeningStatusIndicator()

@@ -1,7 +1,7 @@
 from typing import *
 import csv
 
-from PySide2.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide2.QtCore import QAbstractTableModel, QModelIndex, Qt, QSize
 from PySide2.QtGui import QColor
 
 
@@ -42,15 +42,19 @@ class WordHistory(QAbstractTableModel):
         print(self.history_data)
 
     def remove_word(self, word: str):
-        self.beginRemoveRows()
-        del self.history_data[word]
-        self.endRemoveRows()
+        try:
+            row = list(self.history_data.keys()).index(word)
+            self.beginRemoveRows(QModelIndex(), row, row)
+            del self.history_data[word]
+            self.endRemoveRows()
+        except ValueError:
+            pass
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self.history_data)
 
     def columnCount(self, parent: QModelIndex = ...) -> int:
-        return 2
+        return 4
 
     def data(self, index: QModelIndex, role: int = ...):
 
@@ -63,6 +67,10 @@ class WordHistory(QAbstractTableModel):
                 return list(self.history_data.keys())[row]
             elif col == 1:
                 return self.history_data[list(self.history_data.keys())[row]]
+            elif col == 2:
+                return "icons/book-atlas.svg"
+            elif col == 3:
+                return "icons/trash-can.svg"
 
         elif role == Qt.BackgroundRole:
 
@@ -81,12 +89,21 @@ class WordHistory(QAbstractTableModel):
             elif val == 1:
                 return QColor.fromRgb(83, 235, 52, a)
 
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignCenter
+
+        if role == Qt.SizeHintRole:
+            if col >= 2:
+                return QSize(20, 20)
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            if section == 0:
-                return "Word"
-            elif section == 1:
-                return "Count"
+        if orientation == Qt.Horizontal:
+            if role == Qt.DisplayRole:
+                if section == 0:
+                    return "Word"
+                elif section == 1:
+                    return "Count"
+                else:
+                    return ""
 
         return super().headerData(section, orientation, role)

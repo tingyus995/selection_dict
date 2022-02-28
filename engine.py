@@ -43,6 +43,16 @@ class Engine:
     def load_history(self):
         self.word_history_model.load_data(self.filename)
 
+    def resolve_url(self, word: str):
+        url = None
+
+        if self.eng_re.match(word) is not None:
+            url = f"https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{word}"
+        else:
+            url = f"https://jisho.org/search/{word}"
+
+        return url
+
     def _handle_mouse_dbclick(self, x: int, y: int):
 
         selection = self._selection_grabber.grab()
@@ -53,12 +63,7 @@ class Engine:
 
         self.word_history_model.add_word(selection)
 
-        url = None
-
-        if self.eng_re.match(selection) is not None:
-            url = f"https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{selection}"
-        else:
-            url = f"https://jisho.org/search/{selection}"
+        url = self.resolve_url(selection)
 
         if url is not None:
             self.signals.selected.emit(url, x, y)
