@@ -97,7 +97,7 @@ class TableItemDelegate(QStyledItemDelegate):
 
                 if index.column() == 2:
 
-                    self.signals.selected.emit(self._engine.resolve_url(
+                    self.signals.selected.emit(self._engine.url_resolver.resolve(
                         word), mouse_event.globalX(), mouse_event.globalY())
 
                 elif index.column() == 3:
