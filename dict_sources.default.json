@@ -1,0 +1,10 @@
+[
+    [
+        "[A-z]+",
+        "https://dictionary.cambridge.org/dictionary/english-chinese-traditional/%s"
+    ],
+    [
+        "",
+        "https://jisho.org/search/%s"
+    ]
+]

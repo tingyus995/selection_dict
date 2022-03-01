@@ -152,3 +152,4 @@ cython_debug/
 #.idea/
 history.txt
 config.json
+dict_sources.json

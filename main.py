@@ -9,6 +9,7 @@ from PySide2.QtWidgets import *
 from PySide2.QtGui import *
 
 import pyperclip
+from dict_source_editor import DictionarySourceEditor
 
 from engine import Engine
 from theme import palette
@@ -245,7 +246,6 @@ QHeaderView::section:checked {
         if self.config["always_on_top"]:
             self._enable_always_on_top()
             self.always_on_top_action.setChecked(True)
-        
 
     def _save_config(self):
 
@@ -270,12 +270,13 @@ QHeaderView::section:checked {
         self.engine.word_history_model.reset_count(row)
 
     def _create_menu(self):
-        
+
         self.options_menu = self.menuBar().addMenu("&Options")
 
         self.always_on_top_action = QAction("Always On Top")
         self.always_on_top_action.setCheckable(True)
-        self.always_on_top_action.triggered.connect(self._handle_always_on_top_action)
+        self.always_on_top_action.triggered.connect(
+            self._handle_always_on_top_action)
         self.options_menu.addAction(self.always_on_top_action)
 
         self.dict_opacity_menu = self.options_menu.addMenu(
@@ -297,6 +298,9 @@ QHeaderView::section:checked {
             self.opacity_action_group.addAction(action)
 
         self.dict_opacity_menu.addActions(self.opacity_action_group.actions())
+        self.source_editor_action = QAction("Edit Dictionary Sources")
+        self.source_editor_action.triggered.connect(self._show_source_editor)
+        self.options_menu.addAction(self.source_editor_action)
 
         self.word_menu = QMenu()
         self.copy_word_action = QAction("Copy Word")
@@ -309,14 +313,19 @@ QHeaderView::section:checked {
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.engine.save_history()
+        self.engine.url_resolver.save_data()
         self._save_config()
-    
+
+    def _show_source_editor(self):
+        editor = DictionarySourceEditor(self.engine.url_resolver.source_data)
+        editor.exec_()
+
     def _handle_always_on_top_action(self, checked: bool):
         if checked:
             self._enable_always_on_top()
         else:
             self._disble_always_on_top()
-    
+
     def _enable_always_on_top(self):
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.config["always_on_top"] = True

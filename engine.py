@@ -7,6 +7,7 @@ from PySide2.QtWebEngineWidgets import *
 
 from pynput_mouse_listener import PynputMouseListener
 from pynput_selection_grabber import PynputSelectionGrabber
+from url_resolver import UrlResolver
 from word_history import WordHistory
 
 
@@ -22,8 +23,9 @@ class Engine:
         self._mouse_listener = PynputMouseListener(
             on_dbclick=self._handle_mouse_dbclick)
         self._selection_grabber = PynputSelectionGrabber()
-        self.eng_re = re.compile("[A-z]+")
         self.filename = "history.txt"
+
+        self.url_resolver = UrlResolver()
 
         # load history file if there's one
         try:
@@ -43,16 +45,6 @@ class Engine:
     def load_history(self):
         self.word_history_model.load_data(self.filename)
 
-    def resolve_url(self, word: str):
-        url = None
-
-        if self.eng_re.match(word) is not None:
-            url = f"https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{word}"
-        else:
-            url = f"https://jisho.org/search/{word}"
-
-        return url
-
     def _handle_mouse_dbclick(self, x: int, y: int):
 
         selection = self._selection_grabber.grab()
@@ -63,7 +55,7 @@ class Engine:
 
         self.word_history_model.add_word(selection)
 
-        url = self.resolve_url(selection)
+        url = self.url_resolver.resolve(selection)
 
         if url is not None:
             self.signals.selected.emit(url, x, y)
